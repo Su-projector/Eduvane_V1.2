@@ -1,0 +1,7 @@
+{
+  "name": "Eduvane AI V1.2",
+  "description": "Lab Rat of V1.2 (No custom API integrations).",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
