@@ -255,6 +255,124 @@ export class GeminiService {
                      reasoning: { type: Type.STRING, description: "Why it is aligned or misaligned." }
                  }
               },
+              interpretation_stability: {
+                 type: Type.OBJECT,
+                 properties: {
+                     ambiguity_detected: { type: Type.BOOLEAN },
+                     student_interpretation: { type: Type.STRING, description: "Inferred student reading of the problem." },
+                     status: { type: Type.STRING, enum: ["valid", "invalid", "ambiguous_but_reasonable"] }
+                 }
+              },
+              global_reasoning: {
+                  type: Type.OBJECT,
+                  properties: {
+                      assumptions: {
+                          type: Type.ARRAY,
+                          items: {
+                              type: Type.OBJECT,
+                              properties: {
+                                  id: { type: Type.STRING },
+                                  type: { type: Type.STRING, enum: ["explicit", "implicit"] },
+                                  content: { type: Type.STRING }
+                              }
+                          }
+                      },
+                      progression: {
+                          type: Type.ARRAY,
+                          items: {
+                              type: Type.OBJECT,
+                              properties: {
+                                  id: { type: Type.STRING },
+                                  content: { type: Type.STRING },
+                                  dependencies: { type: Type.ARRAY, items: { type: Type.STRING } }
+                              }
+                          }
+                      },
+                      flags: {
+                          type: Type.ARRAY,
+                          items: {
+                              type: Type.OBJECT,
+                              properties: {
+                                  type: { type: Type.STRING, enum: ["contradiction", "shift", "discontinuity"] },
+                                  location: { type: Type.STRING },
+                                  details: { type: Type.STRING }
+                              }
+                          }
+                      },
+                      consistency_score: { type: Type.NUMBER, description: "0 to 1 scale of internal consistency" }
+                  }
+              },
+              assumption_integrity: {
+                  type: Type.OBJECT,
+                  properties: {
+                      implicit_assumptions: {
+                          type: Type.ARRAY,
+                          items: {
+                              type: Type.OBJECT,
+                              properties: {
+                                  id: { type: Type.STRING },
+                                  content: { type: Type.STRING },
+                                  related_step_ids: { type: Type.ARRAY, items: { type: Type.STRING } },
+                                  legitimacy: { type: Type.STRING, enum: ["permitted", "acceptable", "unjustified"] },
+                                  justification: { type: Type.STRING }
+                              }
+                          }
+                      },
+                      flags: {
+                          type: Type.ARRAY,
+                          items: {
+                              type: Type.OBJECT,
+                              properties: {
+                                  type: { type: Type.STRING, enum: ["constraint_exceeded", "scope_narrowing", "hidden_condition"] },
+                                  assumption_id: { type: Type.STRING },
+                                  details: { type: Type.STRING }
+                              }
+                          }
+                      }
+                  }
+              },
+              verification: {
+                  type: Type.OBJECT,
+                  properties: {
+                      branch: { type: Type.STRING, enum: ["clv", "fact_grounding", "none"] },
+                      clv: {
+                          type: Type.OBJECT,
+                          properties: {
+                              status: { type: Type.STRING, enum: ["verified", "mismatch", "skipped"] },
+                              computed_result: { type: Type.STRING },
+                              student_result: { type: Type.STRING },
+                              discrepancy: { type: Type.STRING }
+                          }
+                      },
+                      fact_grounding: {
+                          type: Type.OBJECT,
+                          properties: {
+                              status: { type: Type.STRING, enum: ["verified", "disputed", "uncertain", "skipped"] },
+                              verified_facts: { type: Type.ARRAY, items: { type: Type.STRING } },
+                              flagged_claims: { type: Type.ARRAY, items: { type: Type.STRING } }
+                          }
+                      }
+                  }
+              },
+              local_reasoning: {
+                  type: Type.OBJECT,
+                  properties: {
+                      steps: {
+                          type: Type.ARRAY,
+                          items: {
+                              type: Type.OBJECT,
+                              properties: {
+                                  step_id: { type: Type.STRING },
+                                  content: { type: Type.STRING },
+                                  status: { type: Type.STRING, enum: ["correct", "partial", "incorrect", "skipped"] },
+                                  confidence: { type: Type.STRING, enum: ["high", "medium", "low"] },
+                                  error_type: { type: Type.STRING, enum: ["calculation", "logic", "constraint_violation", "fact_error", "assumption_error"] },
+                                  related_assumption_id: { type: Type.STRING }
+                              }
+                          }
+                      }
+                  }
+              },
               teacher_insight: { 
                 type: Type.STRING, 
                 description: "Optional, brief instructional cue for teachers." 
@@ -279,6 +397,55 @@ export class GeminiService {
         handwriting: data.handwriting,
         conceptStability: data.concept_stability, // Map internal stability signal
         taskAlignment: data.task_alignment, // Map v1.2 Goal-State Alignment
+        interpretationStability: data.interpretation_stability ? {
+            ambiguityDetected: data.interpretation_stability.ambiguity_detected,
+            studentInterpretation: data.interpretation_stability.student_interpretation,
+            status: data.interpretation_stability.status
+        } : undefined, // Map v1.2 Interpretation Stability Check
+        globalReasoning: data.global_reasoning ? {
+            assumptions: data.global_reasoning.assumptions,
+            progression: data.global_reasoning.progression,
+            flags: data.global_reasoning.flags,
+            consistencyScore: data.global_reasoning.consistency_score
+        } : undefined, // Map v1.2 Global Reasoning Structure
+        assumptionIntegrity: data.assumption_integrity ? {
+            implicitAssumptions: data.assumption_integrity.implicit_assumptions?.map((a: any) => ({
+                id: a.id,
+                content: a.content,
+                relatedStepIds: a.related_step_ids,
+                legitimacy: a.legitimacy,
+                justification: a.justification
+            })) || [],
+            flags: data.assumption_integrity.flags?.map((f: any) => ({
+                type: f.type,
+                assumptionId: f.assumption_id,
+                details: f.details
+            })) || []
+        } : undefined, // Map v1.2 Assumption Integrity Pass
+        verification: data.verification ? {
+            branch: data.verification.branch,
+            clv: data.verification.clv ? {
+                status: data.verification.clv.status,
+                computedResult: data.verification.clv.computed_result,
+                studentResult: data.verification.clv.student_result,
+                discrepancy: data.verification.clv.discrepancy
+            } : undefined,
+            factGrounding: data.verification.fact_grounding ? {
+                status: data.verification.fact_grounding.status,
+                verifiedFacts: data.verification.fact_grounding.verified_facts || [],
+                flaggedClaims: data.verification.fact_grounding.flagged_claims || []
+            } : undefined
+        } : undefined, // Map v1.2 Precision & Truth Anchoring
+        localReasoning: data.local_reasoning ? {
+            steps: data.local_reasoning.steps?.map((s: any) => ({
+                stepId: s.step_id,
+                content: s.content,
+                status: s.status,
+                confidence: s.confidence,
+                errorType: s.error_type,
+                relatedAssumptionId: s.related_assumption_id
+            })) || []
+        } : undefined, // Map v1.2 Local Reasoning Validation
         teacherInsight: data.teacher_insight, // Map Teacher Insight Moment
         ownership: context.ownership, // Pass ownership data through
         rawText: extractedText

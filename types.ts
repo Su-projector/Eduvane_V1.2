@@ -38,6 +38,88 @@ export interface TaskAlignment {
   reasoning: string;
 }
 
+export interface InterpretationStability {
+  ambiguityDetected: boolean;
+  studentInterpretation: string;
+  status: 'valid' | 'invalid' | 'ambiguous_but_reasonable';
+}
+
+export interface ReasoningAssumption {
+  id: string;
+  type: 'explicit' | 'implicit';
+  content: string;
+}
+
+export interface ReasoningStep {
+  id: string;
+  content: string;
+  dependencies: string[]; // IDs of assumptions or previous steps
+}
+
+export interface StructuralFlag {
+  type: 'contradiction' | 'shift' | 'discontinuity';
+  location: string;
+  details: string;
+}
+
+export interface GlobalReasoningStructure {
+  assumptions: ReasoningAssumption[];
+  progression: ReasoningStep[];
+  flags: StructuralFlag[];
+  consistencyScore: number; // 0-1 scale
+}
+
+export interface ImplicitAssumption {
+  id: string;
+  content: string;
+  relatedStepIds: string[];
+  legitimacy: 'permitted' | 'acceptable' | 'unjustified';
+  justification: string;
+}
+
+export interface AssumptionIntegrityFlag {
+  type: 'constraint_exceeded' | 'scope_narrowing' | 'hidden_condition';
+  assumptionId: string;
+  details: string;
+}
+
+export interface AssumptionIntegrity {
+  implicitAssumptions: ImplicitAssumption[];
+  flags: AssumptionIntegrityFlag[];
+}
+
+export interface CLVResult {
+  status: 'verified' | 'mismatch' | 'skipped';
+  computedResult?: string;
+  studentResult?: string;
+  discrepancy?: string;
+}
+
+export interface FactGroundingResult {
+  status: 'verified' | 'disputed' | 'uncertain' | 'skipped';
+  verifiedFacts: string[];
+  flaggedClaims: string[];
+}
+
+export interface VerificationResult {
+  branch: 'clv' | 'fact_grounding' | 'none';
+  clv?: CLVResult;
+  factGrounding?: FactGroundingResult;
+}
+
+export interface ValidatedStep {
+  stepId: string;
+  content: string;
+  status: 'correct' | 'partial' | 'incorrect' | 'skipped';
+  confidence: 'high' | 'medium' | 'low';
+  errorType?: 'calculation' | 'logic' | 'constraint_violation' | 'fact_error' | 'assumption_error';
+  relatedAssumptionId?: string;
+}
+
+export interface LocalReasoning {
+  steps: ValidatedStep[];
+}
+
 export interface StudentInfo {
   name?: string;
   class?: string;
@@ -67,6 +149,11 @@ export interface AnalysisResult {
   handwriting?: HandwritingAnalysis; // New dimension
   conceptStability?: ConceptStability; // Internal intelligence signal (v1.1)
   taskAlignment?: TaskAlignment; // Goal-State Alignment (v1.2)
+  interpretationStability?: InterpretationStability; // Interpretation Stability Check (v1.2)
+  globalReasoning?: GlobalReasoningStructure; // Global Reasoning Structure Pass (v1.2)
+  assumptionIntegrity?: AssumptionIntegrity; // Assumption Integrity Pass (v1.2)
+  verification?: VerificationResult; // Precision & Truth Anchoring (v1.2)
+  localReasoning?: LocalReasoning; // Local Reasoning Validation (v1.2)
   ownership?: OwnershipContext; // Role-aware context
   teacherInsight?: string; // Teacher Insight Moment (v1.1) - Conversational cue
   rawText?: string;
